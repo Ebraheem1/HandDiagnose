@@ -1,0 +1,19 @@
+{
+  "name": "handdiagnose",
+  "version": "1.0.0",
+  "description": "Measuring the angles between all the joints of the hand and the fingers",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ebraheem1/HandDiagnose.git"
+  },
+  "author": "Ebraheem & Yasmine",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ebraheem1/HandDiagnose/issues"
+  },
+  "homepage": "https://github.com/Ebraheem1/HandDiagnose#readme"
+}
