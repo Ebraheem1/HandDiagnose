@@ -17,6 +17,9 @@
   },
   "homepage": "https://github.com/Ebraheem1/HandDiagnose#readme",
   "dependencies": {
+    "csv-write-stream": "^2.0.0",
+    "delay": "^2.0.0",
+    "fs": "0.0.1-security",
     "leapjs": "^0.6.4"
   }
 }
