@@ -52,6 +52,8 @@ var controller = Leap.loop(Controller, function(frame) {
             ringFinger(frame.hands[0].ringFinger);
             pinkyFinger(frame.hands[0].pinky);
             writer.write(arr);
+            // pinkyFinger(frame.hands[0].ringFinger);
+            // pinkyFinger2(frame.hands[0].ringFinger);
         }
     }
   });
@@ -95,6 +97,8 @@ var middleFinger = function(middle)
     var distal_medial = Math.acos(Leap.vec3.dot(middleDistal, middleMedial)) * (180 / Math.PI);
     var medial_proximal = Math.acos(Leap.vec3.dot(middleMedial, middleProximal)) * (180 / Math.PI);
     var proximal_metacarpal = Math.acos(Leap.vec3.dot(middleProximal, middleMetacarpal)) * (180 / Math.PI);
+
+    console.log("directions: " + distal_medial);
     arr[5] = distal_medial;
     arr[6] = medial_proximal;
     arr[7] = proximal_metacarpal;
@@ -110,6 +114,9 @@ var ringFinger = function(ring)
     var distal_medial = Math.acos(Leap.vec3.dot(ringDistal, ringMedial)) * (180 / Math.PI);
     var medial_proximal = Math.acos(Leap.vec3.dot(ringMedial, ringProximal)) * (180 / Math.PI);
     var proximal_metacarpal = Math.acos(Leap.vec3.dot(ringProximal, ringMetacarpal)) * (180 / Math.PI);
+
+    console.log("directions: " + distal_medial);
+
     arr[8] = distal_medial;
     arr[9] = medial_proximal;
     arr[10] = proximal_metacarpal;
@@ -130,6 +137,8 @@ var pinkyFinger = function(pinky) {
   arr[11] = distal_medial;
   arr[12] = medial_proximal;
   arr[13] = proximal_metacarpal;
+  console.log("directions: " + distal_medial);
+
 //   console.log("Angle between distal and medial: " + distal_medial);
 //   console.log("Angle between medial and proximal: " + medial_proximal);
 //   console.log("Angle between Proximal and Metacarpal: " + proximal_metacarpal);
@@ -160,6 +169,132 @@ var indexFinger2 = function(index) {
   proximalZ = proximalJoint[2];
 
   metacarpalJoint = index.mcpPosition;
+  metacarpalX = metacarpalJoint[0];
+  metacarpalY = metacarpalJoint[1];
+  metacarpalZ = metacarpalJoint[2];
+
+  tip_distal = Math.sqrt(Math.pow(distalX - fingerTipX, 2) + Math.pow(distalY - fingerTipY, 2) + Math.pow(distalZ - fingerTipZ, 2));
+
+  tip_proximal = Math.sqrt(Math.pow(proximalX - fingerTipX, 2) + Math.pow(proximalY - fingerTipY, 2) + Math.pow(proximalZ - fingerTipZ, 2));
+  // a
+  distal_proximal = Math.sqrt(Math.pow(distalX - proximalX, 2) + Math.pow(distalY - proximalY, 2) + Math.pow(distalZ - proximalZ, 2));
+  // b
+  proximal_metacarpal = Math.sqrt(Math.pow(proximalX - metacarpalX, 2) + Math.pow(proximalY - metacarpalY, 2) + Math.pow(proximalZ - metacarpalZ, 2));
+  // c
+  distal_metacarpal = Math.sqrt(Math.pow(distalX - metacarpalX, 2) + Math.pow(distalY - metacarpalY, 2) + Math.pow(distalZ - metacarpalZ, 2));
+
+  distal_medial = Math.acos((Math.pow(tip_distal, 2) + Math.pow(distal_proximal, 2) - Math.pow(tip_proximal, 2)) / (2 * tip_distal * distal_proximal));
+
+  medial_proximal = Math.acos((Math.pow(distal_proximal, 2) + Math.pow(proximal_metacarpal, 2) - Math.pow(distal_metacarpal, 2)) / (2 * distal_proximal * proximal_metacarpal));
+
+  console.log("Positions: " + (180-(distal_medial * (180 / Math.PI))));
+  // console.log("Positions: " + (180-(medial_proximal * (180 / Math.PI))));
+}
+
+var middleFinger2 = function(middle) {
+  // angle of the distal interphalangeal joint
+  fingerTip = middle.distal.nextJoint;
+  fingerTipX = fingerTip[0];
+  fingerTipY = fingerTip[1];
+  fingerTipZ = fingerTip[2];
+
+  // angle of the proximal interphalangeal joint
+  distalJoint = middle.dipPosition;
+  distalX = distalJoint[0];
+  distalY = distalJoint[1];
+  distalZ = distalJoint[2];
+  // console.log(distalX, distalY, distalZ);
+
+  proximalJoint = middle.pipPosition;
+  proximalX = proximalJoint[0];
+  proximalY = proximalJoint[1];
+  proximalZ = proximalJoint[2];
+
+  metacarpalJoint = middle.mcpPosition;
+  metacarpalX = metacarpalJoint[0];
+  metacarpalY = metacarpalJoint[1];
+  metacarpalZ = metacarpalJoint[2];
+
+  tip_distal = Math.sqrt(Math.pow(distalX - fingerTipX, 2) + Math.pow(distalY - fingerTipY, 2) + Math.pow(distalZ - fingerTipZ, 2));
+
+  tip_proximal = Math.sqrt(Math.pow(proximalX - fingerTipX, 2) + Math.pow(proximalY - fingerTipY, 2) + Math.pow(proximalZ - fingerTipZ, 2));
+  // a
+  distal_proximal = Math.sqrt(Math.pow(distalX - proximalX, 2) + Math.pow(distalY - proximalY, 2) + Math.pow(distalZ - proximalZ, 2));
+  // b
+  proximal_metacarpal = Math.sqrt(Math.pow(proximalX - metacarpalX, 2) + Math.pow(proximalY - metacarpalY, 2) + Math.pow(proximalZ - metacarpalZ, 2));
+  // c
+  distal_metacarpal = Math.sqrt(Math.pow(distalX - metacarpalX, 2) + Math.pow(distalY - metacarpalY, 2) + Math.pow(distalZ - metacarpalZ, 2));
+
+  distal_medial = Math.acos((Math.pow(tip_distal, 2) + Math.pow(distal_proximal, 2) - Math.pow(tip_proximal, 2)) / (2 * tip_distal * distal_proximal));
+
+  medial_proximal = Math.acos((Math.pow(distal_proximal, 2) + Math.pow(proximal_metacarpal, 2) - Math.pow(distal_metacarpal, 2)) / (2 * distal_proximal * proximal_metacarpal));
+
+  console.log("Positions: " + (180-(distal_medial * (180 / Math.PI))));
+  // console.log("Positions: " + (180-(medial_proximal * (180 / Math.PI))));
+}
+
+var ringFinger2 = function(ring) {
+  // angle of the distal interphalangeal joint
+  fingerTip = ring.distal.nextJoint;
+  fingerTipX = fingerTip[0];
+  fingerTipY = fingerTip[1];
+  fingerTipZ = fingerTip[2];
+
+  // angle of the proximal interphalangeal joint
+  distalJoint = ring.dipPosition;
+  distalX = distalJoint[0];
+  distalY = distalJoint[1];
+  distalZ = distalJoint[2];
+  // console.log(distalX, distalY, distalZ);
+
+  proximalJoint = ring.pipPosition;
+  proximalX = proximalJoint[0];
+  proximalY = proximalJoint[1];
+  proximalZ = proximalJoint[2];
+
+  metacarpalJoint = ring.mcpPosition;
+  metacarpalX = metacarpalJoint[0];
+  metacarpalY = metacarpalJoint[1];
+  metacarpalZ = metacarpalJoint[2];
+
+  tip_distal = Math.sqrt(Math.pow(distalX - fingerTipX, 2) + Math.pow(distalY - fingerTipY, 2) + Math.pow(distalZ - fingerTipZ, 2));
+
+  tip_proximal = Math.sqrt(Math.pow(proximalX - fingerTipX, 2) + Math.pow(proximalY - fingerTipY, 2) + Math.pow(proximalZ - fingerTipZ, 2));
+  // a
+  distal_proximal = Math.sqrt(Math.pow(distalX - proximalX, 2) + Math.pow(distalY - proximalY, 2) + Math.pow(distalZ - proximalZ, 2));
+  // b
+  proximal_metacarpal = Math.sqrt(Math.pow(proximalX - metacarpalX, 2) + Math.pow(proximalY - metacarpalY, 2) + Math.pow(proximalZ - metacarpalZ, 2));
+  // c
+  distal_metacarpal = Math.sqrt(Math.pow(distalX - metacarpalX, 2) + Math.pow(distalY - metacarpalY, 2) + Math.pow(distalZ - metacarpalZ, 2));
+
+  distal_medial = Math.acos((Math.pow(tip_distal, 2) + Math.pow(distal_proximal, 2) - Math.pow(tip_proximal, 2)) / (2 * tip_distal * distal_proximal));
+
+  medial_proximal = Math.acos((Math.pow(distal_proximal, 2) + Math.pow(proximal_metacarpal, 2) - Math.pow(distal_metacarpal, 2)) / (2 * distal_proximal * proximal_metacarpal));
+
+  console.log("Positions: " + (180-(distal_medial * (180 / Math.PI))));
+  // console.log("Positions: " + (180-(medial_proximal * (180 / Math.PI))));
+}
+
+var pinkyFinger2 = function(pinky) {
+  // angle of the distal interphalangeal joint
+  fingerTip = pinky.distal.nextJoint;
+  fingerTipX = fingerTip[0];
+  fingerTipY = fingerTip[1];
+  fingerTipZ = fingerTip[2];
+
+  // angle of the proximal interphalangeal joint
+  distalJoint = pinky.dipPosition;
+  distalX = distalJoint[0];
+  distalY = distalJoint[1];
+  distalZ = distalJoint[2];
+  // console.log(distalX, distalY, distalZ);
+
+  proximalJoint = pinky.pipPosition;
+  proximalX = proximalJoint[0];
+  proximalY = proximalJoint[1];
+  proximalZ = proximalJoint[2];
+
+  metacarpalJoint = pinky.mcpPosition;
   metacarpalX = metacarpalJoint[0];
   metacarpalY = metacarpalJoint[1];
   metacarpalZ = metacarpalJoint[2];
