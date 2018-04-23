@@ -1,20 +1,31 @@
 var Leap = require('./node_modules/leapjs');
 const delay = require('delay');
 var csvWriter = require('csv-write-stream');
-var writer = csvWriter({headers: ["ThumbDIP", "ThumbPIP","IndexDIP", "IndexPIP", "IndexMCP", "MiddleDIP", "MiddlePIP", "MiddleMCP", "RingDIP", "RingPIP", "RingMCP", "PinkyDIP", "PinkyPIP", "PinkyMCP"]});
+var writer = csvWriter({headers: ["ThumbDIP", "ThumbPIP","IndexDIP", "IndexPIP", 
+ "IndexMCP", "MiddleDIP", "MiddlePIP", "MiddleMCP", "RingDIP", "RingPIP",
+ "RingMCP", "PinkyDIP", "PinkyPIP", "PinkyMCP", "TI", "IM", "MR", "RP",
+ "Wrist Angle Upward", "Wrist Angle Downward"]});
+/**
+ * TI-> Angle between Thumb and Index Fingers
+ * IM -> Angle between Index and Middle Fingers
+ * MR -> Angle between Middle and Ring Fingers
+ * RP -> Angle between Ring and Pinky Fingers
+ */
+
 var fs = require('fs');
 writer.pipe(fs.createWriteStream('static-measurements.csv'));
-var arr = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+var arr = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 var terminate = 0;
-var counter = 0;
+var angleCounter = 0;
+var wristAngleUp = 0;
+var wristAngleDown = 0;
 var options = {
     host: '127.0.0.1',
     port: 8080,
-    //Don't receive frames when not in foreground app
-    background: false,
+    background: true,
     useAllPlugins: true,
     enableGestures: true
-  };
+};
 
 
 
@@ -22,14 +33,24 @@ var options = {
 var Controller = new Leap.Controller(options);
 
 function terminateFunc(){
-    if(terminate != 3)
+    if(terminate == 2)
     {
         terminate = 3;
-        console.log('Measurement is done');
+        console.log('Finger Measurements are done, Move Your hand up with fixed wrist');
         for(var i =0; i < arr.length; i++)
         {
-            arr[i] /= counter;
+            arr[i] /= angleCounter;
         }
+    }else if(terminate == 4)
+    {
+        terminate = 5;
+        console.log('Wrist Upward Measurements are done, Move Your hand down with fixed wrist');
+        arr[18] /= wristAngleUp;
+    }else if(terminate == 6)
+    {
+        terminate = 7;
+        console.log('Measurements are done');
+        arr[19] /= wristAngleDown;
         writer.write(arr);
         writer.end();
     }
@@ -37,8 +58,11 @@ function terminateFunc(){
 
 var controller = Leap.loop(Controller, function(frame) {
     if(frame.hands.length > 0){
+        
         if(terminate == 0)
         {
+            //here is a delay to ensure that the hand of the patient is in the right position
+            //so we wait for only one sec
             terminate = 0.1;
             delay(1070)
             .then(() => {
@@ -48,20 +72,101 @@ var controller = Leap.loop(Controller, function(frame) {
         }
         else if(terminate == 1)
         {
+            //Here we wait for 4 secs to get the measurements between the fingers
+            //like the angles between the fingers
+            //and the angles between the joints of each finger
             terminate = 2;
-            setTimeout(terminateFunc, 3060);
+            //this function waits for 4 seconds
+            setTimeout(terminateFunc, 4060);
         }
         if((terminate == 1) || (terminate == 2)){
-            counter++;
+            //Here we call the measurement functions for 4 secs as mentioned above
+            if(frame.hands[0].valid)
+            {
+                angleCounter++;
+                measuringAngleBetweenFingers(frame.hands[0]);
+            } 
             if(frame.hands[0].thumb.valid) thumbFinger(frame.hands[0].thumb);
             if(frame.hands[0].indexFinger.valid) indexFinger(frame.hands[0].indexFinger);
             if(frame.hands[0].middleFinger.valid) middleFinger(frame.hands[0].middleFinger);
             if(frame.hands[0].ringFinger.valid) ringFinger(frame.hands[0].ringFinger);
             if(frame.hands[0].pinky.valid) pinkyFinger(frame.hands[0].pinky);
-            //writer.write(arr);
+        }
+        else if(terminate == 3)
+        {
+            //here we wait for 2 secs in order to leave a room for the patient
+            //to change his hand position to measure the wrist threshold upward
+            terminate = 3.1;
+            delay(2070)
+            .then(() => {
+                terminate = 4;
+                console.log('Waiting For Up Wrist Position is done');
+                //we measure the wrist angle upward for 3 secs.
+                setTimeout(terminateFunc, 3060);
+            });
+        }
+        else if(terminate == 4)
+        {
+            
+            if(frame.hands[0].valid)
+            {
+                wristAngleUp++;
+                measuringWristAngle(frame.hands[0]);
+            }
+        } else if(terminate == 5)
+        {
+            //here we wait for 2 secs in order to leave a room for the patient
+            //to change his hand position to measure the wrist threshold downward
+            terminate = 5.1;
+            delay(2070)
+            .then(() => {
+                terminate = 6;
+                console.log('Waiting For Down Wrist Position is done');
+                //we measure the wrist angle downward for 3 secs.
+                setTimeout(terminateFunc, 3060);
+            });
+        }
+        if(terminate == 6)
+        {
+            if(frame.hands[0].valid)
+            {
+                wristAngleDown++;
+                measuringWristAngle(frame.hands[0]);
+            }
         }
     }
   });
+
+var measuringWristAngle = function(hand){
+    var armDirection = hand.arm.direction();
+    var handDirection = hand.direction;
+
+    var wristAngle = Math.acos(Leap.vec3.dot(armDirection, handDirection)) * (180 / Math.PI);
+    if(wristAngleDown == 0)
+        arr[18] += wristAngle;
+    else 
+        arr[19] += wristAngle;
+};
+var measuringAngleBetweenFingers = function(hand)
+{
+    var thumbDirection = hand.thumb.medial.direction();
+    var indexDirection = hand.indexFinger.proximal.direction();
+    var middleDirection = hand.middleFinger.proximal.direction();
+    var ringDirection = hand.ringFinger.proximal.direction();
+    var pinkyDirection = hand.pinky.proximal.direction();
+
+    var thumbIndexAngle = Math.acos(Leap.vec3.dot(thumbDirection, indexDirection)) * (180 / Math.PI);
+    var indexMidAngle = Math.acos(Leap.vec3.dot(indexDirection, middleDirection)) * (180 / Math.PI);
+    var midRingAngle = Math.acos(Leap.vec3.dot(middleDirection, ringDirection)) * (180 / Math.PI);
+    var ringPinkyAngle = Math.acos(Leap.vec3.dot(ringDirection, pinkyDirection)) * (180 / Math.PI);
+          
+    arr[14] += thumbIndexAngle;
+    arr[15] += indexMidAngle;
+    arr[16] += midRingAngle;
+    arr[17] += ringPinkyAngle;
+};
+
+
 
 var thumbFinger = function(thumb){
     var thumbDistal = thumb.distal.direction();
@@ -69,54 +174,10 @@ var thumbFinger = function(thumb){
     var thumbProximal = thumb.proximal.direction();
     var distal_medial = Math.acos(Leap.vec3.dot(thumbDistal, thumbMedial)) * (180 / Math.PI);
     var medial_proximal = Math.acos(Leap.vec3.dot(thumbMedial, thumbProximal)) * (180 / Math.PI);
-    console.log(medial_proximal);
     arr[0] += distal_medial;
     arr[1] += medial_proximal;
- 
-    
 };
 
-var thumbFinger2 = function(thumb){
-    // angle of the distal interphalangeal joint
-    // fingerTip = index.stabilizedTipPosition;
-    fingerTip = thumb.distal.nextJoint;
-    fingerTipX = fingerTip[0];
-    fingerTipY = fingerTip[1];
-    fingerTipZ = fingerTip[2];
-
-    // angle of the proximal interphalangeal joint
-    distalJoint = thumb.distal.prevJoint;
-    distalX = distalJoint[0];
-    distalY = distalJoint[1];
-    distalZ = distalJoint[2];
-    // console.log(distalX, distalY, distalZ);
-  
-    proximalJoint = thumb.pipPosition;
-    proximalX = proximalJoint[0];
-    proximalY = proximalJoint[1];
-    proximalZ = proximalJoint[2];
-  
-    metacarpalJoint = thumb.mcpPosition;
-    metacarpalX = metacarpalJoint[0];
-    metacarpalY = metacarpalJoint[1];
-    metacarpalZ = metacarpalJoint[2];
-  
-    tip_distal = Math.sqrt(Math.pow(distalX - fingerTipX, 2) + Math.pow(distalY - fingerTipY, 2) + Math.pow(distalZ - fingerTipZ, 2));
-    
-    tip_proximal = Math.sqrt(Math.pow(proximalX - fingerTipX, 2) + Math.pow(proximalY - fingerTipY, 2) + Math.pow(proximalZ - fingerTipZ, 2));
-    // a
-    distal_proximal = Math.sqrt(Math.pow(distalX - proximalX, 2) + Math.pow(distalY - proximalY, 2) + Math.pow(distalZ - proximalZ, 2));
-    // b
-    proximal_metacarpal = Math.sqrt(Math.pow(proximalX - metacarpalX, 2) + Math.pow(proximalY - metacarpalY, 2) + Math.pow(proximalZ - metacarpalZ, 2));
-    // c
-    distal_metacarpal = Math.sqrt(Math.pow(distalX - metacarpalX, 2) + Math.pow(distalY - metacarpalY, 2) + Math.pow(distalZ - metacarpalZ, 2));
-
-    distal_medial = Math.acos((Math.pow(tip_distal, 2) + Math.pow(distal_proximal, 2) - Math.pow(tip_proximal, 2)) / (2 * tip_distal * distal_proximal));
-    distal_medial *= (180 / Math.PI);
-    medial_proximal = Math.acos((Math.pow(distal_proximal, 2) + Math.pow(proximal_metacarpal, 2) - Math.pow(distal_metacarpal, 2)) / (2 * distal_proximal * proximal_metacarpal));
-    medial_proximal *= (180 / Math.PI);
-    
-};
 
 
 
@@ -129,58 +190,13 @@ var indexFinger = function(index)
 
     var distal_medial = Math.acos(Leap.vec3.dot(indexDistal, indexMedial)) * (180 / Math.PI);
     var medial_proximal = Math.acos(Leap.vec3.dot(indexMedial, indexProximal)) * (180 / Math.PI);
-    //console.log("directions: " + distal_medial);
-    // console.log("directions: " + medial_proximal);
     var proximal_metacarpal = Math.acos(Leap.vec3.dot(indexProximal, indexMetacarpal)) * (180 / Math.PI);
     arr[2] += distal_medial;
     arr[3] += medial_proximal;
     arr[4] += proximal_metacarpal;
 };
 
-///////////////////////////////////////////////////////////////////////////////////////////////
 
-var indexFinger2 = function(index) {
-    // angle of the distal interphalangeal joint
-    // fingerTip = index.stabilizedTipPosition;
-    fingerTip = index.distal.nextJoint;
-    fingerTipX = fingerTip[0];
-    fingerTipY = fingerTip[1];
-    fingerTipZ = fingerTip[2];
-  
-    // angle of the proximal interphalangeal joint
-    distalJoint = index.dipPosition;
-    distalX = distalJoint[0];
-    distalY = distalJoint[1];
-    distalZ = distalJoint[2];
-    // console.log(distalX, distalY, distalZ);
-  
-    proximalJoint = index.pipPosition;
-    proximalX = proximalJoint[0];
-    proximalY = proximalJoint[1];
-    proximalZ = proximalJoint[2];
-  
-    metacarpalJoint = index.mcpPosition;
-    metacarpalX = metacarpalJoint[0];
-    metacarpalY = metacarpalJoint[1];
-    metacarpalZ = metacarpalJoint[2];
-  
-    tip_distal = Math.sqrt(Math.pow(distalX - fingerTipX, 2) + Math.pow(distalY - fingerTipY, 2) + Math.pow(distalZ - fingerTipZ, 2));
-  
-    tip_proximal = Math.sqrt(Math.pow(proximalX - fingerTipX, 2) + Math.pow(proximalY - fingerTipY, 2) + Math.pow(proximalZ - fingerTipZ, 2));
-    // a
-    distal_proximal = Math.sqrt(Math.pow(distalX - proximalX, 2) + Math.pow(distalY - proximalY, 2) + Math.pow(distalZ - proximalZ, 2));
-    // b
-    proximal_metacarpal = Math.sqrt(Math.pow(proximalX - metacarpalX, 2) + Math.pow(proximalY - metacarpalY, 2) + Math.pow(proximalZ - metacarpalZ, 2));
-    // c
-    distal_metacarpal = Math.sqrt(Math.pow(distalX - metacarpalX, 2) + Math.pow(distalY - metacarpalY, 2) + Math.pow(distalZ - metacarpalZ, 2));
-  
-    distal_medial = Math.acos((Math.pow(tip_distal, 2) + Math.pow(distal_proximal, 2) - Math.pow(tip_proximal, 2)) / (2 * tip_distal * distal_proximal));
-  
-    medial_proximal = Math.acos((Math.pow(distal_proximal, 2) + Math.pow(proximal_metacarpal, 2) - Math.pow(distal_metacarpal, 2)) / (2 * distal_proximal * proximal_metacarpal));
-  
-    //console.log("Positions: " + (180-(distal_medial * (180 / Math.PI))));
-    // console.log("Positions: " + (180-(medial_proximal * (180 / Math.PI))));
-  };
 
 var middleFinger = function(middle)
 {
@@ -227,10 +243,6 @@ var pinkyFinger = function(pinky) {
   arr[11] += distal_medial;
   arr[12] += medial_proximal;
   arr[13] += proximal_metacarpal;
-//   console.log("Angle between distal and medial: " + distal_medial);
-//   console.log("Angle between medial and proximal: " + medial_proximal);
-//   console.log("Angle between Proximal and Metacarpal: " + proximal_metacarpal);
-
 };
 
 
